@@ -79,3 +79,46 @@ void* Thread_Cores :: GenerateTrafficWrapper(void* args)
     Thread_Cores *ThreadPtr = (Thread_Cores *)args;
     return reinterpret_cast<Thread_Cores*>(args)->GenerateTraffic(ThreadPtr);
 }
+
+void* Thread_Cores :: GenerateTraffic(Thread_Cores *Instance)
+{
+    printf("GenerateTraffic() is called. Running on %d\n",sched_getcpu());
+
+    SetWorkerThreadCancelParams();
+
+    /* ****** Thread Specific Variables ****** */
+
+    uint8_t ThreadWriteData[64];                         /* Data to Write */
+    int ThreadIndex = sched_getcpu();                    /* Thread Index */
+    int Node = numa_node_of_cpu(ThreadIndex);            /* NUMA Node of Thread Index */
+    bool done = false;                                   /* Thread Iteration Complete Flag */
+    int RdData;                                          /* Hold Read Value */
+    uint64_t StartThreadTick,StopThreadTick;             /* Latency Computing Tick Params */
+	
+    Instance->Tgt->MemTgt.CoreAddrCfg[ThreadIndex].AddressLoopCount = 0;
+
+    do
+    {
+        MemWrCache((const void *)&ThreadWriteData[0],Instance,ThreadIndex);
+        Instance->Tgt->MemTgt.CoreAddrCfg[ThreadIndex].AddressLoopCount +=1;	
+    }while(!done);
+}
+
+inline void Thread_Cores :: MemWrCache(const void* src, Thread_Cores *Instance, int ThreadIndex)
+{
+    /* mov [rdx],rax */
+
+    uint64_t NumLines = Instance->Tgt->MemTgt.CoreAddrCfg[ThreadIndex].Size;
+    void *addr;
+
+    for(int index=0;index<NumLines;index++)
+    {
+        addr = (void *)((char *)Instance->Tgt->MemTgt.Virt + Instance->Tgt->MemTgt.CoreAddrCfg[ThreadIndex].AddressArray[index]);
+
+        asm volatile("mov %%rdx,(%%rax)"
+                        : :"d"(src),"a"(addr));
+
+        if(FencingEn)
+            asm volatile("mfence");
+    }
+}
