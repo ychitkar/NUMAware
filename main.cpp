@@ -32,13 +32,13 @@ int main(int argc, char *argv[])
             oThread->StartThread();
             if(RunTime)
             {
-                detailedverbose("Going to Sleep for %f seconds.\n",RunTime);
+                printf("Going to Sleep for %f seconds.\n",RunTime);
                 sleep(RunTime);
                 oThread->StopThread(true);
             }
             else
             {
-                detailedverbose("Waiting for %d iterations to complete.\n",RunIter);
+                printf("Waiting for %d iterations to complete.\n",RunIter);
                 oThread->StopThread(false);
                 StopIterTick = rdtsc();
 
